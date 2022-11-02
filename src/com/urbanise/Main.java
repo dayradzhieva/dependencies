@@ -6,57 +6,90 @@ import java.util.stream.Collectors;
 public class Main {
 
     public static void main(String[] args) {
-        Map<String, Set<String>> dependencies = new HashMap<>();
-        Map<String, Set<String>> analysedDependencies = new HashMap<>();
+        Map<String, Set<String>> inputDependencies = readDependencies();
+
+        System.out.println("----- DEPENDENCIES -----");
+
+        analyseDependencies(inputDependencies);
+
+        System.out.println("----- INVERSE DEPENDENCIES -----");
+
+        analyseInverseDependencies(inputDependencies);
+
+    }
+
+    private static Map<String, Set<String>> readDependencies() {
+        Map<String, Set<String>> inputDependencies = new HashMap<>();
+
         Scanner scanner = new Scanner(System.in);
 
         String line;
-        while(true) {
+        while (true) {
             line = scanner.nextLine();
             if (line == null || line.trim().isEmpty()) {
                 break;
             }
             String[] items = line.trim().split(" ");
-            populateDependencies(dependencies, items);
+            populateDependencies(inputDependencies, items);
         }
-
-        for (String rootDependency: dependencies.keySet()) {
-            Set<String> allDependencies = dependencyAnalysis(dependencies, rootDependency);
-            analysedDependencies.putIfAbsent(rootDependency, allDependencies);
-        }
-
-
-        for (String rootDependency: analysedDependencies.keySet()) {
-            print(analysedDependencies, rootDependency);
-        }
+        return inputDependencies;
     }
 
-    private static void populateDependencies(Map<String, Set<String>> dependencies, String[] items) {
+    private static void populateDependencies(Map<String, Set<String>> inputDependencies, String[] items) {
         String rootDependency = items[0];
-        dependencies.putIfAbsent(rootDependency, new HashSet<>());
+        inputDependencies.putIfAbsent(rootDependency, new HashSet<>());
 
         if (items.length > 1) {
             Set<String> newSubDependencies = Arrays.stream(items, 1, items.length)
                     .collect(Collectors.toSet());
-            Set<String> subDependencies = dependencies.get(rootDependency);
+            Set<String> subDependencies = inputDependencies.get(rootDependency);
             subDependencies.addAll(newSubDependencies);
         }
     }
 
-    private static Set<String> dependencyAnalysis (Map<String, Set<String>> dependencies, String rootDependency){
-        Set<String> analysedDependencies = dependencies.get(rootDependency);
-        Set<String> subDependencies;
+    private static void analyseDependencies(Map<String, Set<String>> inputDependencies) {
+        Map<String, Set<String>> analysedDependencies = new HashMap<>();
+        for (String rootDependency : inputDependencies.keySet()) {
+            analysedDependencies.putIfAbsent(rootDependency, getDependencies(inputDependencies, rootDependency));
+        }
 
-        for (String root: dependencies.keySet()) {
-            if(root.equals(rootDependency)){
+        for (String rootDependency : analysedDependencies.keySet()) {
+            print(analysedDependencies, rootDependency);
+        }
+    }
+
+    private static Set<String> getDependencies(Map<String, Set<String>> dependencies, String rootDependency) {
+        Set<String> analysedDependencies = dependencies.get(rootDependency);
+
+        for (String root : dependencies.keySet()) {
+            if (root.equals(rootDependency)) {
                 continue;
             }
-            subDependencies = dependencies.get(root);
-            if(analysedDependencies.contains(root)) {
-                analysedDependencies.addAll(subDependencies);
+
+            if (analysedDependencies.contains(root)) {
+                analysedDependencies.addAll(dependencies.get(root));
             }
         }
         return analysedDependencies;
+    }
+
+    private static void analyseInverseDependencies(Map<String, Set<String>> inputDependencies) {
+        Map<String, Set<String>> inverseDependencies = getInverseDependencies(inputDependencies);
+
+        for (String rootDependency : inverseDependencies.keySet()) {
+            print(inverseDependencies, rootDependency);
+        }
+    }
+
+    private static Map<String, Set<String>> getInverseDependencies(Map<String, Set<String>> inputDependencies) {
+        Map<String, Set<String>> inverseDependencies = new HashMap<>();
+
+        for (String root : inputDependencies.keySet()) {
+            inputDependencies.get(root)
+                    .forEach((c) -> inverseDependencies.computeIfAbsent(c, k -> new HashSet<>()).add(root));
+        }
+
+        return inverseDependencies;
     }
 
     private static void print(Map<String, Set<String>> dependencies, String rootDependency) {
@@ -67,15 +100,9 @@ public class Main {
 
         System.out.print(rootDependency + " ");
 
-        for (String subDependency: subDependencies) {
+        for (String subDependency : subDependencies) {
             System.out.print(subDependency + " ");
         }
         System.out.println();
     }
-    //        A B C
-    //        B C E
-    //        C G
-    //        D A F
-    //        E F
-    //        F H
 }
